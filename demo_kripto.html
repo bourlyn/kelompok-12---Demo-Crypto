@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Demo TLS & Security - Kelompok Cryptography</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .packet { transition: all 1.5s ease-in-out; }
+        .hidden-content { display: none; }
+        .terminal { background: #1e1e1e; color: #00ff00; font-family: 'Courier New', Courier, monospace; }
+    </style>
+</head>
+<body class="bg-gray-100 font-sans">
+
+    <!-- Header -->
+    <header class="bg-blue-900 text-white p-6 shadow-lg">
+        <h1 class="text-3xl font-bold text-center">Simulasi TLS Misconfiguration & HTTPS Security</h1>
+        <p class="text-center mt-2 opacity-80">Universitas Pertamina - Matakuliah Cryptography</p>
+    </header>
+
+    <!-- Navigasi -->
+    <nav class="flex justify-center bg-blue-800 text-white space-x-4 p-3 shadow-md">
+        <button onclick="showTab('demo1')" class="px-4 py-2 hover:bg-blue-600 rounded">1. HTTP vs HTTPS</button>
+        <button onclick="showTab('demo2')" class="px-4 py-2 hover:bg-blue-600 rounded">2. MITM Attack</button>
+        <button onclick="showTab('demo3')" class="px-4 py-2 hover:bg-blue-600 rounded">3. Misconfiguration Scan</button>
+        <button onclick="showTab('demo4')" class="px-4 py-2 hover:bg-blue-600 rounded">4. Downgrade Attack</button>
+    </nav>
+
+    <main class="container mx-auto mt-8 p-6 bg-white rounded-xl shadow-xl mb-10">
+
+        <!-- DEMO 1: HTTP vs HTTPS -->
+        <div id="demo1" class="tab-content">
+            <h2 class="text-2xl font-bold mb-4 text-blue-900">Demo 1: Sniffing Data (HTTP vs HTTPS)</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div class="border p-4 rounded bg-gray-50">
+                    <h3 class="font-bold mb-2">Tampilan Browser Korban</h3>
+                    <div class="bg-white border p-4 shadow-sm">
+                        <label>Pilih Protokol:</label>
+                        <select id="protocolSelect" class="border p-1 rounded mb-4">
+                            <option value="http">HTTP (Tidak Aman)</option>
+                            <option value="https">HTTPS (TLS Aktif)</option>
+                        </select>
+                        <input type="text" id="user_id" placeholder="Username" class="w-full border p-2 mb-2">
+                        <input type="password" id="pass_id" placeholder="Password" class="w-full border p-2 mb-4">
+                        <button onclick="simulateSniff()" class="bg-blue-600 text-white px-4 py-2 w-full rounded">Login</button>
+                    </div>
+                </div>
+                <div class="terminal p-4 rounded min-h-[200px]">
+                    <h3 class="font-bold mb-2 text-white italic">Hacker View (Wireshark Simulation):</h3>
+                    <div id="wireshark_log" class="text-sm">Menunggu data...</div>
+                </div>
+            </div>
+            <p class="mt-4 text-gray-600 italic">*Penjelasan: Pada HTTP, data terlihat "Plaintext". Pada HTTPS, data terenkripsi menjadi karakter acak.*</p>
+        </div>
+
+        <!-- DEMO 2: MITM ATTACK -->
+        <div id="demo2" class="tab-content hidden-content">
+            <h2 class="text-2xl font-bold mb-4 text-red-700">Demo 2: Man-In-The-Middle (MITM) & Verification</h2>
+            <div class="flex flex-col items-center">
+                <div class="flex justify-between w-full max-w-2xl mb-8">
+                    <div class="text-center font-bold">👤 User</div>
+                    <div id="hacker-node" class="text-center font-bold text-red-600 opacity-0">😈 Hacker (Interception)</div>
+                    <div class="text-center font-bold">🌐 Server</div>
+                </div>
+                <div class="relative w-full max-w-2xl h-2 bg-gray-300 rounded">
+                    <div id="packet" class="packet absolute -top-3 left-0 w-8 h-8 bg-blue-600 rounded-full border-4 border-white"></div>
+                </div>
+                <div class="mt-10 space-x-4">
+                    <button onclick="startMITM(false)" class="bg-green-600 text-white px-6 py-2 rounded">Kirim Data Normal (HTTPS)</button>
+                    <button onclick="startMITM(true)" class="bg-red-600 text-white px-6 py-2 rounded">Mulai MITM Attack</button>
+                </div>
+                <div id="mitm_status" class="mt-6 p-4 border rounded w-full text-center font-mono"></div>
+            </div>
+        </div>
+
+        <!-- DEMO 3: TLS MISCONFIGURATION -->
+        <div id="demo3" class="tab-content hidden-content">
+            <h2 class="text-2xl font-bold mb-4 text-orange-700">Demo 3: Analisis Miskonfigurasi TLS</h2>
+            <div class="bg-gray-100 p-6 rounded-lg">
+                <div class="flex mb-4">
+                    <input type="text" id="target_url" placeholder="Masukkan URL (ex: bca.co.id)" class="flex-grow p-2 border rounded-l">
+                    <button onclick="scanConfig()" class="bg-orange-600 text-white px-6 py-2 rounded-r">Scan Keamanan</button>
+                </div>
+                <div id="scan_results" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <!-- Results go here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- DEMO 4: DOWNGRADE ATTACK (SSL STRIPPING) -->
+        <div id="demo4" class="tab-content hidden-content">
+            <h2 class="text-2xl font-bold mb-4 text-purple-700">Demo 4: Downgrade Attack (SSL Strip)</h2>
+            <div class="max-w-xl mx-auto border-4 border-gray-400 rounded-lg overflow-hidden">
+                <div class="bg-gray-200 p-2 flex items-center space-x-2">
+                    <div id="lock_icon" class="text-green-600">🔒</div>
+                    <div id="address_bar" class="bg-white flex-grow px-2 py-1 rounded text-sm text-green-700 font-bold">https://mybank.com/login</div>
+                </div>
+                <div class="p-10 text-center bg-white">
+                    <h1 class="text-xl font-bold mb-4">Selamat Datang di Bank Aman</h1>
+                    <p class="text-sm text-gray-500 mb-4">Pastikan gembok berwarna hijau aktif.</p>
+                    <button class="bg-blue-500 text-white px-4 py-2 rounded opacity-50 cursor-not-allowed">Login Ke Rekening</button>
+                </div>
+            </div>
+            <div class="mt-6 text-center">
+                <button onclick="simulateDowngrade()" class="bg-purple-700 text-white px-8 py-3 rounded-full font-bold animate-pulse">LUNCURKAN SSL STRIP ATTACK!</button>
+                <p id="hsts_info" class="mt-4 text-sm text-gray-600"></p>
+            </div>
+        </div>
+
+    </main>
+
+    <footer class="text-center text-gray-500 text-sm pb-10">
+        &copy; 2024 Kelompok Cryptography - Universitas Pertamina
+    </footer>
+
+    <script>
+        // Navigasi Logic
+        function showTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.add('hidden-content'));
+            document.getElementById(tabId).classList.remove('hidden-content');
+        }
+
+        // Demo 1: Sniffing
+        function simulateSniff() {
+            const proto = document.getElementById('protocolSelect').value;
+            const user = document.getElementById('user_id').value || "admin";
+            const pass = document.getElementById('pass_id').value || "rahasia123";
+            const log = document.getElementById('wireshark_log');
+
+            log.innerHTML = `<span class="text-white">[Capturing Traffic...]</span><br>`;
+            
+            setTimeout(() => {
+                if (proto === 'http') {
+                    log.innerHTML += `<span class="text-yellow-400">ALERT: HTTP Packet Captured!</span><br>`;
+                    log.innerHTML += `<span class="text-red-500">POST /login HTTP/1.1</span><br>`;
+                    log.innerHTML += `<span class="text-red-500">Host: website.com</span><br>`;
+                    log.innerHTML += `<span class="text-red-400 font-bold">Data: user=${user}&pass=${pass}</span>`;
+                } else {
+                    log.innerHTML += `<span class="text-green-400">INFO: HTTPS TLS v1.3 Packet Captured.</span><br>`;
+                    log.innerHTML += `<span class="text-green-400">Encrypted Application Data:</span><br>`;
+                    log.innerHTML += `<span class="text-gray-400">0000: 4a 8b 22 f1 09 ac 77 ...</span><br>`;
+                    log.innerHTML += `<span class="text-gray-400">0010: de ad be ef 44 21 00 ...</span><br>`;
+                    log.innerHTML += `<span class="text-green-200 italic">(Hacker tidak bisa membaca password)</span>`;
+                }
+            }, 800);
+        }
+
+        // Demo 2: MITM
+        function startMITM(isAttacked) {
+            const packet = document.getElementById('packet');
+            const hacker = document.getElementById('hacker-node');
+            const status = document.getElementById('mitm_status');
+            
+            packet.style.left = '0%';
+            status.innerHTML = "Mengirim Paket...";
+
+            if (isAttacked) {
+                hacker.style.opacity = '1';
+                setTimeout(() => {
+                    packet.style.left = '50%';
+                    packet.classList.replace('bg-blue-600', 'bg-red-600');
+                    status.innerHTML = "😈 PAKET DICEGAT HACKER! (Browser mendeteksi sertifikat palsu)";
+                }, 750);
+                setTimeout(() => {
+                    status.innerHTML = "❌ <span class='text-red-600 font-bold underline'>SSL_ERROR_BAD_CERT_DOMAIN:</span> Browser memutus koneksi karena Hacker mencoba mengganti sertifikat!";
+                }, 2000);
+            } else {
+                hacker.style.opacity = '0';
+                packet.classList.replace('bg-red-600', 'bg-blue-600');
+                setTimeout(() => { packet.style.left = '100%'; }, 100);
+                setTimeout(() => { status.innerHTML = "✅ Koneksi Aman: TLS Handshake Berhasil dengan Server."; }, 1500);
+            }
+        }
+
+        // Demo 3: Misconfig
+        function scanConfig() {
+            const target = document.getElementById('target_url').value || "unknown.com";
+            const results = document.getElementById('scan_results');
+            results.innerHTML = "Memindai...";
+
+            const checks = [
+                { name: "TLS 1.0/1.1 Support", status: "VULNERABLE", color: "text-red-600", desc: "Protokol usang masih diaktifkan." },
+                { name: "Certificate Expiry", status: "VALID", color: "text-green-600", desc: "Sertifikat berlaku hingga 2025." },
+                { name: "Weak Cipher Suite", status: "WARNING", color: "text-yellow-600", desc: "Mendukung RC4/3DES yang lemah." },
+                { name: "HSTS Header", status: "MISSING", color: "text-red-600", desc: "Server tidak memaksa HTTPS." }
+            ];
+
+            setTimeout(() => {
+                results.innerHTML = "";
+                checks.forEach(c => {
+                    results.innerHTML += `
+                        <div class="bg-white p-4 border rounded shadow-sm">
+                            <h4 class="font-bold">${c.name}</h4>
+                            <p class="${c.color} font-bold">${c.status}</p>
+                            <p class="text-xs text-gray-500">${c.desc}</p>
+                        </div>
+                    `;
+                });
+            }, 1000);
+        }
+
+        // Demo 4: Downgrade
+        function simulateDowngrade() {
+            const lock = document.getElementById('lock_icon');
+            const addr = document.getElementById('address_bar');
+            const hsts = document.getElementById('hsts_info');
+
+            lock.innerHTML = "🔓";
+            lock.classList.replace('text-green-600', 'text-red-600');
+            addr.innerHTML = "http://mybank.com/login";
+            addr.classList.replace('text-green-700', 'text-red-700');
+            
+            hsts.innerHTML = `
+                <div class="bg-red-100 p-4 border border-red-400 rounded text-red-700">
+                    <strong>Hacker Success!</strong> Website ini tidak menggunakan header <b>HSTS</b>.<br>
+                    Hacker berhasil memaksa (Downgrade) koneksi dari HTTPS ke HTTP (SSL Stripping).<br>
+                    Sekarang, semua data yang kamu masukkan bisa disadap di Demo 1!
+                </div>
+            `;
+        }
+    </script>
+</body>
+</html>
